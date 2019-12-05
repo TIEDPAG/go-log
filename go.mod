@@ -1,4 +1,4 @@
-module github.com/tiedpag/go-log
+module github.com/TIEDPAG/go-log
 
 go 1.12
 
