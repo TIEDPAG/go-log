@@ -1,5 +1,5 @@
-module github.com/TIEDPAG/go-log
+module github.com/TIEDPAG/go-log/v2
 
 go 1.13
 
-require github.com/alecthomas/log4go v0.0.0-20180109082532-d146e6b86faa // indirect
+require github.com/sirupsen/logrus v1.4.2

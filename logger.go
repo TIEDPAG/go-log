@@ -4,52 +4,63 @@
 package log
 
 import (
-	log "github.com/alecthomas/log4go"
+	log "github.com/sirupsen/logrus"
+	"os"
 )
 
 func init() {
-	To("stdout", "DEBUG")
+	To("stdout", "debug","text")
 }
 
-var root = make(log.Logger)
+var root = log.New()
 
 // TO 设置日志对象写入方式
-func To(target string, levelName string) {
-	var writer log.LogWriter = nil
+func To(target, levelName, formatter string) {
+	switch formatter {
+	case "json":
+		root.SetFormatter(&log.JSONFormatter{})
+	case "text":
+		fallthrough
+	default:
+		root.SetFormatter(&log.TextFormatter{})
+	}
 
 	switch target {
 	case "stdout":
-		writer = log.NewConsoleLogWriter()
+		root.Out = os.Stdout
 	case "none": //no logging
 	default:
-		writer = log.NewFileLogWriter(target, true)
+		file, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+		if err == nil {
+			root.Out = file
+		} else {
+			root.Out = os.Stdout
+			root.Errorf("set log file error,err: %v", err)
+		}
 	}
 
-	if writer != nil {
-		var level = log.DEBUG
+
+	if root != nil {
+		var level = log.DebugLevel
 
 		switch levelName {
-		case "FINEST":
-			level = log.FINEST
-		case "FINE":
-			level = log.FINE
-		case "DEBUG":
-			level = log.DEBUG
-		case "TRACE":
-			level = log.TRACE
-		case "INFO":
-			level = log.INFO
-		case "WARNING":
-			level = log.WARNING
-		case "ERROR":
-			level = log.ERROR
-		case "CRITICAL":
-			level = log.CRITICAL
+		case "debug":
+			level = log.DebugLevel
+		case "trace":
+			level = log.TraceLevel
+		case "info":
+			level = log.InfoLevel
+		case "warning":
+			level = log.WarnLevel
+		case "error":
+			level = log.ErrorLevel
+		case "panic":
+			level = log.PanicLevel
 		default:
-			level = log.DEBUG
+			level = log.DebugLevel
 		}
 
-		root.AddFilter("log", level, writer)
+		root.SetLevel(level)
 	}
 }
 
@@ -62,19 +73,19 @@ type Logger interface {
 	ClearLogPrefixes()
 	Debug(string, ...interface{})
 	Info(string, ...interface{})
-	Warn(string, ...interface{}) error
-	Error(string, ...interface{}) error
+	Warn(string, ...interface{})
+	Error(string, ...interface{})
 }
 
 // PrefixLogger 可设置前缀日志实际对象
 type PrefixLogger struct {
-	*log.Logger
+	Logger *log.Logger
 	prefix string
 }
 
 // NewPrefixLogger 初始化一个包含前缀的日志对象
 func NewPrefixLogger(prefixes ...string) Logger {
-	l := &PrefixLogger{Logger: &root}
+	l := &PrefixLogger{Logger: root}
 
 	for _, p := range prefixes {
 		l.AddLogPrefix(p)
@@ -97,46 +108,46 @@ func (pl *PrefixLogger) ClearLogPrefixes() {
 	pl.prefix = ""
 }
 
-func (pl *PrefixLogger) pfm(arg0 string) interface{} {
+func (pl *PrefixLogger) pfm(arg0 string) string {
 	return pl.prefix + " " + arg0
 }
 
 // Debug 输出Debug级别日志
 func (pl *PrefixLogger) Debug(arg0 string, args ...interface{}) {
-	pl.Logger.Debug(pl.pfm(arg0), args...)
+	pl.Logger.Debugf(pl.pfm(arg0), args...)
 }
 
 // Info 输出Info级别日志
 func (pl *PrefixLogger) Info(arg0 string, args ...interface{}) {
-	pl.Logger.Info(pl.pfm(arg0), args...)
+	pl.Logger.Infof(pl.pfm(arg0), args...)
 }
 
 // Warn 输出Warn级别日志
-func (pl *PrefixLogger) Warn(arg0 string, args ...interface{}) error {
-	return pl.Logger.Warn(pl.pfm(arg0), args...)
+func (pl *PrefixLogger) Warn(arg0 string, args ...interface{}) {
+	pl.Logger.Warnf(pl.pfm(arg0), args...)
 }
 
 // Error 输出Error级别日志
-func (pl *PrefixLogger) Error(arg0 string, args ...interface{}) error {
-	return pl.Logger.Error(pl.pfm(arg0), args...)
+func (pl *PrefixLogger) Error(arg0 string, args ...interface{}) {
+	pl.Logger.Errorf(pl.pfm(arg0), args...)
 }
 
 // Debug 输出Debug级别日志
 func Debug(arg0 string, args ...interface{}) {
-	root.Debug(arg0, args...)
+	root.Debugf(arg0, args...)
 }
 
 // Info 输出Info级别日志
 func Info(arg0 string, args ...interface{}) {
-	root.Info(arg0, args...)
+	root.Infof(arg0, args...)
 }
 
 // Warn 输出Warn级别日志
-func Warn(arg0 string, args ...interface{}) error {
-	return root.Warn(arg0, args...)
+func Warn(arg0 string, args ...interface{}) {
+	root.Warnf(arg0, args...)
 }
 
 // Error 输出Error级别日志
-func Error(arg0 string, args ...interface{}) error {
-	return root.Error(arg0, args...)
+func Error(arg0 string, args ...interface{}) {
+	root.Errorf(arg0, args...)
 }
